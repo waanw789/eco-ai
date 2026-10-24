@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>EcoClassroom AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{--bg:#f8fafc;--card:#fff;--ink:#0f172a;--mute:#64748b;--line:#e2e8f0;--soft:#ecfdf5;--g1:#10b981;--g2:#059669;color-scheme:light;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0b1220;--card:#111b2e;--ink:#e2e8f0;--mute:#94a3b8;--line:#22314a;--soft:#0d2a24;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0b1220;--card:#111b2e;--ink:#e2e8f0;--mute:#94a3b8;--line:#22314a;--soft:#0d2a24;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{background:var(--bg);color:var(--ink);font-family:'Noto Sans Thai','Sarabun',system-ui,sans-serif}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px}
+.mute{color:var(--mute)}
+.sw{width:42px;height:24px;border-radius:99px;background:#cbd5e1;position:relative;transition:.2s;flex:none;border:0;cursor:pointer}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.2s}
+.sw[aria-checked="true"]{background:var(--g1)}
+.sw[aria-checked="true"]::after{left:21px}
+.sw:focus-visible,button:focus-visible,select:focus-visible{outline:2px solid var(--g1);outline-offset:2px}
+.pulse{animation:pulse 1.4s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(239,68,68,.6)}70%{box-shadow:0 0 0 12px rgba(239,68,68,0)}100%{box-shadow:0 0 0 0 rgba(239,68,68,0)}}
+@media (prefers-reduced-motion:reduce){.pulse{animation:none}}
+.chip{border:1px solid var(--line);background:var(--card);border-radius:99px;padding:6px 14px;font-size:14px;cursor:pointer}
+.chip.on{background:var(--g2);color:#fff;border-color:var(--g2)}
+.room.risk{border-color:#f59e0b;box-shadow:0 0 0 1px #f59e0b33}
+.room.off{opacity:.72}
+.badge{font-size:12px;padding:2px 10px;border-radius:99px;font-weight:600;white-space:nowrap}
+.b-risk{background:#fef3c7;color:#92400e}.b-use{background:#dbeafe;color:#1e40af}.b-eco{background:#d1fae5;color:#065f46}.b-off{background:#e2e8f0;color:#334155}
+#toasts{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:8px;z-index:50}
+.toast{background:#0f172a;color:#fff;border-left:4px solid var(--g1);padding:10px 14px;border-radius:10px;font-size:14px;max-width:300px;box-shadow:0 8px 24px #0004}
+.num{font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<header class="sticky top-0 z-20" style="background:#0f172a;padding-top:env(safe-area-inset-top,0px)">
+  <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+    <div class="flex items-center gap-2 text-white">
+      <span class="w-9 h-9 rounded-lg flex items-center justify-center text-lg" style="background:linear-gradient(135deg,#10b981,#059669)">🍃</span>
+      <div><div class="font-bold leading-tight">EcoClassroom AI</div><div class="text-xs" style="color:#94a3b8">ระบบบริหารพลังงานและคาร์บอนห้องเรียน</div></div>
+    </div>
+    <label class="flex items-center gap-2 text-sm text-white">🏢
+      <select id="bld" class="rounded-lg px-3 py-2 text-sm" style="background:#1e293b;color:#fff;border:1px solid #334155">
+        <option>อาคาร dspace ชั้น 9</option><option>อาคาร dspace ชั้น 8</option><option>อาคารเรียนรวม ชั้น 3</option>
+      </select>
+    </label>
+  </div>
+</header>
+
+<main class="max-w-6xl mx-auto px-4 py-5 space-y-5">
+  <section class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+    <div class="card p-4"><div class="text-sm mute">⚡ พลังงานที่ประหยัดได้วันนี้</div><div class="text-3xl font-bold num mt-1" style="color:var(--g2)"><span id="kwh">148.5</span> <span class="text-base font-medium">kWh</span></div></div>
+    <div class="card p-4"><div class="text-sm mute">💰 ค่าไฟที่ประหยัดได้</div><div class="text-3xl font-bold num mt-1" style="color:var(--g2)"><span id="baht">668.25</span> <span class="text-base font-medium">บาท</span></div></div>
+    <div class="card p-4"><div class="text-sm mute">🌱 ลดการปล่อยก๊าซคาร์บอน</div><div class="text-3xl font-bold num mt-1" style="color:var(--g2)"><span id="co2">74.25</span> <span class="text-base font-medium">kgCO2e</span></div></div>
+  </section>
+
+  <section id="alert" class="rounded-2xl p-5 text-white" style="background:linear-gradient(120deg,#7f1d1d,#b45309)">
+    <div class="flex items-start gap-3">
+      <span class="pulse w-4 h-4 rounded-full bg-red-500 mt-2 flex-none"></span>
+      <div class="flex-1">
+        <div class="font-semibold text-lg leading-snug">⚠️ AI ตรวจพบพลังงานสูญเปล่า: ห้อง 902 (Auditorium) ไม่มีคนอยู่เกิน 15 นาทีแล้ว แต่ยังเปิดแอร์ 22°C และไฟเต็มระบบ</div>
+        <div class="text-sm mt-1 opacity-90">คาดว่าสูญเสียพลังงานประมาณ 8.4 kWh ต่อชั่วโมง หากไม่ดำเนินการ</div>
+        <div class="flex flex-wrap gap-2 mt-4">
+          <button data-a="shutdown" class="px-4 py-2 rounded-lg font-semibold" style="background:#fff;color:#7f1d1d">⚡ สั่งปิดไฟและแอร์ทันที</button>
+          <button data-a="eco" class="px-4 py-2 rounded-lg font-semibold" style="background:#10b981;color:#fff">🍃 ปรับเป็น Eco Mode (26°C)</button>
+          <button data-a="dismiss" class="px-4 py-2 rounded-lg font-medium" style="background:#ffffff26;color:#fff">เพิกถอน / ละเว้น</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+      <h2 class="text-lg font-bold">ห้องเรียนทั้งหมด</h2>
+      <div id="filters" class="flex flex-wrap gap-2">
+        <button class="chip on" data-f="all">ทั้งหมด</button>
+        <button class="chip" data-f="risk">ห้องที่มีความเสี่ยง ⚠️</button>
+        <button class="chip" data-f="use">กำลังใช้งาน</button>
+        <button class="chip" data-f="off">ปิดแล้ว</button>
+      </div>
+    </div>
+    <div id="grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+  </section>
+
+  <section class="card p-4">
+    <h2 class="text-lg font-bold">การใช้ไฟตลอดวัน (kW)</h2>
+    <p class="text-sm mute mb-3">เปรียบเทียบการใช้ไฟปกติกับการใช้ไฟหลังใช้ AI ช่วง 08:00 - 18:00</p>
+    <div style="position:relative;height:280px"><canvas id="chart" aria-label="กราฟเปรียบเทียบการใช้ไฟ"></canvas></div>
+  </section>
+
+  <section class="card p-4">
+    <h2 class="text-lg font-bold mb-3">ประวัติการทำงานของ AI</h2>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm" style="min-width:520px">
+        <thead><tr class="text-left mute"><th class="py-2 pr-3 font-medium">เวลา</th><th class="py-2 pr-3 font-medium">การทำงาน</th><th class="py-2 font-medium">ผู้สั่ง</th></tr></thead>
+        <tbody id="log"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+<div id="toasts" aria-live="polite"></div>
+
+<script>
+const RATE=4.5, CO2F=0.5;
+const rooms=[
+ {id:'901',name:'ห้อง 901',tag:'ห้องเรียน',temp:25,occ:true,light:true,ac:true,eco:false,auto:true,lkw:1.2,akw:4},
+ {id:'902',name:'ห้อง 902',tag:'Auditorium',temp:22,occ:false,light:true,ac:true,eco:false,auto:false,lkw:2.4,akw:6},
+ {id:'903',name:'ห้อง 903',tag:'ห้องเรียน',temp:29,occ:false,light:true,ac:false,eco:false,auto:false,lkw:1.2,akw:4},
+ {id:'801',name:'ห้อง 801',tag:'Lab',temp:24,occ:true,light:true,ac:true,eco:false,auto:true,lkw:1.8,akw:5},
+ {id:'904',name:'ห้อง 904',tag:'ห้องประชุม',temp:26,occ:false,light:false,ac:true,eco:true,auto:true,lkw:0.8,akw:3},
+ {id:'802',name:'ห้อง 802',tag:'ห้องเรียน',temp:30,occ:false,light:false,ac:false,eco:false,auto:true,lkw:1.2,akw:4}
+];
+const BASE=148.5;
+const saved=r=>(r.light?0:r.lkw*.5)+(r.ac?(r.eco?r.akw*.35:0):r.akw*.5);
+rooms.forEach(r=>r.s0=saved(r));
+let filter='all', alertOpen=true;
+const $=s=>document.querySelector(s);
+const status=r=>{
+ if(!r.light&&!r.ac)return['off','ปิดแล้ว','b-off'];
+ if(r.occ)return['use','มีเรียน','b-use'];
+ if(r.eco)return['eco','Eco Mode','b-eco'];
+ return['risk','ว่าง - เปิดไฟทิ้งไว้ ⚠️','b-risk'];
+};
+function stats(){
+ const kwh=Math.max(0,BASE+rooms.reduce((a,r)=>a+saved(r)-r.s0,0));
+ $('#kwh').textContent=kwh.toFixed(1);
+ $('#baht').textContent=(kwh*RATE).toFixed(2);
+ $('#co2').textContent=(kwh*CO2F).toFixed(2);
+}
+const sw=(on,k,id,label)=>`<div class="flex items-center justify-between py-1.5"><span class="text-sm">${label}</span><button class="sw" role="switch" aria-checked="${on}" aria-label="${label}" data-t="${k}" data-id="${id}"></button></div>`;
+function render(){
+ const list=rooms.filter(r=>filter==='all'||status(r)[0]===filter);
+ $('#grid').innerHTML=list.length?list.map(r=>{
+  const [k,label,cls]=status(r);
+  return `<article class="room card p-4 ${k==='risk'?'risk':''} ${k==='off'?'off':''}">
+   <div class="flex items-start justify-between gap-2"><div><div class="font-bold">${r.name}</div><div class="text-xs mute">${r.tag}</div></div><span class="badge ${cls}">${label}</span></div>
+   <div class="grid grid-cols-2 gap-2 my-3 text-sm">
+    <div class="rounded-lg p-2" style="background:var(--soft)"><div class="text-xs mute">อุณหภูมิ</div><div class="font-semibold num">${r.ac?r.temp+'°C':'แอร์ปิด'}</div></div>
+    <div class="rounded-lg p-2" style="background:var(--soft)"><div class="text-xs mute">เซนเซอร์ตรวจจับ</div><div class="font-semibold">${r.occ?'🟢 พบการเคลื่อนไหว':'⚪ ไม่พบคน'}</div></div>
+   </div>
+   ${sw(r.light,'light',r.id,'สวิตช์ไฟ')}${sw(r.ac,'ac',r.id,'สวิตช์แอร์')}${sw(r.auto,'auto',r.id,'ระบบ AI อัตโนมัติ (Auto-Sync)')}
+  </article>`}).join(''):'<p class="mute col-span-full py-8 text-center">ไม่มีห้องในหมวดนี้</p>';
+ stats();
+}
+function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;$('#toasts').appendChild(t);setTimeout(()=>t.remove(),3200)}
+function addLog(msg,by){
+ const d=new Date(),t=d.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}).replace(':','.');
+ $('#log').insertAdjacentHTML('afterbegin',`<tr class="border-t" style="border-color:var(--line)"><td class="py-2 pr-3 num whitespace-nowrap">${t} น.</td><td class="py-2 pr-3">${msg}</td><td class="py-2"><span class="badge ${by==='AI'?'b-eco':'b-use'}">${by}</span></td></tr>`);
+}
+[['11.30','AI สั่งปิดแอร์ห้อง 901 หลังจบคาบเรียน 10 นาที','AI'],['10.45','AI ลดความสว่างไฟห้อง 801 Lab เหลือ 60% ตามแสงธรรมชาติ','AI'],['10.10','AI ปรับแอร์ห้อง 904 เป็น Eco Mode (26°C)','AI'],['09.20','AI ปิดไฟห้อง 802 หลังไม่พบคนเกิน 15 นาที','AI']].forEach(([t,m,b])=>{
+ $('#log').insertAdjacentHTML('beforeend',`<tr class="border-t" style="border-color:var(--line)"><td class="py-2 pr-3 num whitespace-nowrap">${t} น.</td><td class="py-2 pr-3">${m}</td><td class="py-2"><span class="badge b-eco">${b}</span></td></tr>`)});
+
+const r902=()=>rooms.find(r=>r.id==='902');
+function closeAlert(){alertOpen=false;$('#alert').style.display='none'}
+$('#alert').addEventListener('click',e=>{
+ const a=e.target.dataset.a;if(!a)return;
+ const r=r902(),before=saved(r);
+ if(a==='shutdown'){r.light=false;r.ac=false;r.eco=false;render();closeAlert();
+  const g=saved(r)-before;toast(`ปิดไฟและแอร์ห้อง 902 แล้ว ประหยัดเพิ่ม ${g.toFixed(1)} kWh`);addLog('ผู้ใช้สั่งปิดไฟและแอร์ห้อง 902 (Auditorium) ทันที','ผู้ดูแล');}
+ if(a==='eco'){r.light=false;r.ac=true;r.temp=26;r.eco=true;render();closeAlert();
+  const g=saved(r)-before;toast(`ปรับห้อง 902 เป็น Eco Mode 26°C ประหยัดเพิ่ม ${g.toFixed(1)} kWh`);addLog('ผู้ใช้ปรับห้อง 902 เป็น Eco Mode (26°C)','ผู้ดูแล');}
+ if(a==='dismiss'){closeAlert();toast('ละเว้นการแจ้งเตือนแล้ว');addLog('ผู้ใช้ละเว้นการแจ้งเตือนห้อง 902','ผู้ดูแล');}
+});
+$('#grid').addEventListener('click',e=>{
+ const b=e.target.closest('.sw');if(!b)return;
+ const r=rooms.find(x=>x.id===b.dataset.id),k=b.dataset.t,before=saved(r);
+ r[k]=!r[k];
+ if(k==='ac'){r.eco=false;r.temp=r.ac?24:r.temp}
+ if(k==='light'&&r.light)r.eco=false;
+ render();
+ const nm={light:'ไฟ',ac:'แอร์',auto:'ระบบ AI อัตโนมัติ'}[k],st=r[k]?'เปิด':'ปิด';
+ if(k==='auto'){toast(`${st}${nm}ห้อง ${r.id}`);addLog(`${st}ระบบ AI อัตโนมัติ (Auto-Sync) ห้อง ${r.id}`,'ผู้ดูแล');}
+ else{const g=saved(r)-before;toast(`${st}${nm}ห้อง ${r.id} • ${g>=0?'ประหยัดเพิ่ม':'ใช้ไฟเพิ่ม'} ${Math.abs(g).toFixed(1)} kWh`);addLog(`ผู้ใช้${st}${nm}ห้อง ${r.id}`,'ผู้ดูแล');}
+});
+$('#filters').addEventListener('click',e=>{
+ const f=e.target.dataset.f;if(!f)return;filter=f;
+ document.querySelectorAll('#filters .chip').forEach(c=>c.classList.toggle('on',c.dataset.f===f));render();
+});
+$('#bld').addEventListener('change',e=>toast('เปลี่ยนเป็น '+e.target.value));
+
+try{
+ const labels=['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00'];
+ const dark=matchMedia('(prefers-color-scheme: dark)').matches, tc=dark?'#94a3b8':'#64748b', gc=dark?'#22314a':'#e2e8f0';
+ new Chart($('#chart'),{type:'line',data:{labels,datasets:[
+  {label:'การใช้ไฟปกติ (Without AI)',data:[42,58,66,70,74,72,68,66,60,48,40],borderColor:'#94a3b8',backgroundColor:'#94a3b822',borderDash:[6,4],tension:.35,pointRadius:3},
+  {label:'การใช้ไฟจริงหลังใช้ AI (With AI Optimized)',data:[34,41,45,46,44,45,43,42,38,30,24],borderColor:'#10b981',backgroundColor:'#10b98133',fill:true,tension:.35,pointRadius:3}
+ ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+  plugins:{legend:{labels:{color:tc,font:{family:'Noto Sans Thai'}}}},
+  scales:{x:{ticks:{color:tc},grid:{color:gc}},y:{ticks:{color:tc},grid:{color:gc},title:{display:true,text:'kW',color:tc},beginAtZero:true}}}});
+}catch(err){console.error(err)}
+render();
+</script>
+</body>
+</html>
